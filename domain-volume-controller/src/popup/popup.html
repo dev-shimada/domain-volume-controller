@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Domain Volume Controller</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔊 Volume Control</h1>
+    </header>
+
+    <main>
+      <div class="domain-section">
+        <label class="label">Domain:</label>
+        <div id="domainDisplay" class="domain-display">Loading...</div>
+      </div>
+
+      <div class="volume-section">
+        <label for="volumeSlider" class="label">
+          Volume: <span id="volumeValue" class="volume-value">100%</span>
+        </label>
+        <input
+          type="range"
+          id="volumeSlider"
+          class="volume-slider"
+          min="0"
+          max="100"
+          value="100"
+          step="1"
+        >
+        <div class="volume-labels">
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p class="info">Adjust volume for this domain. Changes apply immediately.</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
