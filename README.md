@@ -88,6 +88,47 @@ npm run build
 npm run watch
 ```
 
+### Package for Chrome Web Store
+
+Create a production-ready zip file for uploading to Chrome Web Store:
+
+```bash
+cd domain-volume-controller
+npm run package
+```
+
+This will create `domain-volume-controller.zip` in the project root, excluding development files and source maps.
+
+## Release Process
+
+### Automated Release (GitHub Actions)
+
+1. Update the version in `domain-volume-controller/manifest.json`
+2. Commit your changes:
+   ```bash
+   git add .
+   git commit -m "Release v1.0.0"
+   ```
+3. Create and push a version tag:
+   ```bash
+   git tag v1.0.0
+   git push origin main --tags
+   ```
+4. GitHub Actions will automatically:
+   - Run tests
+   - Build the extension
+   - Create a clean zip file
+   - Create a GitHub Release with the zip file attached
+
+### Manual Release
+
+1. Build and package:
+   ```bash
+   cd domain-volume-controller
+   npm run package
+   ```
+2. Upload `domain-volume-controller.zip` to [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+
 ## Project Structure
 
 ```
