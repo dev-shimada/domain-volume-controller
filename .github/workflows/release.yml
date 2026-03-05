@@ -5,10 +5,17 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: false
+        default: 'manual-build'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -33,31 +40,33 @@ jobs:
         working-directory: ./domain-volume-controller
         run: npm run build
 
+      - name: Set version name
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.event.inputs.version || 'manual-build' }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Chrome Web Store package
         working-directory: ./domain-volume-controller
         run: |
           cd dist
-          # Remove development files from icons directory if they exist
-          rm -f icons/README.md icons/create_icons.sh
-          # Create zip file excluding unnecessary files
-          zip -r ../domain-volume-controller-${{ github.ref_name }}.zip . \
-            -x "*.map" \
-            -x "*.md" \
-            -x "*.sh"
+          zip -r ../domain-volume-controller-${{ steps.version.outputs.name }}.zip . \
+            -x "*.map"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chrome-extension
-          path: domain-volume-controller/domain-volume-controller-${{ github.ref_name }}.zip
+          name: chrome-extension-${{ steps.version.outputs.name }}
+          path: domain-volume-controller/domain-volume-controller-${{ steps.version.outputs.name }}.zip
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: domain-volume-controller/domain-volume-controller-${{ github.ref_name }}.zip
+          files: domain-volume-controller/domain-volume-controller-${{ steps.version.outputs.name }}.zip
           draft: false
           prerelease: false
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
