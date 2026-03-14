@@ -18,8 +18,14 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "js": ["content/volume-enforcer.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
       "js": ["content/content-script.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
     }
   ],
   "action": {

@@ -1,5 +1,7 @@
 /**
- * Content script for controlling media volume
+ * Content script for controlling media volume (runs in ISOLATED world).
+ * Reads saved volume from storage and communicates with the
+ * volume-enforcer (MAIN world) via CustomEvent.
  */
 
 import { extractDomain, normalizeDomain } from '../utils/domain';
@@ -7,39 +9,47 @@ import { getVolumeForDomain } from '../shared/storage';
 import { MEDIA_SELECTORS, OBSERVER_CONFIG, VOLUME_MIN, VOLUME_MAX } from '../shared/constants';
 
 /**
- * Apply volume to a media element
- * @param element - Audio or video element
- * @param volumePercent - Volume as percentage (0-100)
+ * Apply volume to a media element.
+ * In the isolated world, this uses the original (non-overridden) setter.
  */
 export function applyVolume(element: HTMLMediaElement, volumePercent: number): void {
-  // Clamp to valid range
   const clamped = Math.max(VOLUME_MIN, Math.min(VOLUME_MAX, volumePercent));
-  // Convert percentage to 0.0-1.0 range
   element.volume = clamped / 100;
 }
 
 /**
  * Find all media elements in the document or a specific container
- * @param container - Optional container to search in, defaults to document
- * @returns Array of media elements
  */
 export function findMediaElements(container: Document | Element = document): HTMLMediaElement[] {
   return Array.from(container.querySelectorAll<HTMLMediaElement>(MEDIA_SELECTORS));
 }
 
 /**
- * Apply volume to all media elements on the page
+ * Notify the main-world enforcer of the target volume via CustomEvent.
+ * The enforcer will override page JS volume changes to enforce this value.
  */
-async function applyVolumeToAll(): Promise<void> {
+function notifyEnforcer(volumePercent: number): void {
+  window.dispatchEvent(
+    new CustomEvent('__dvc_set_volume', { detail: { volume: volumePercent } })
+  );
+}
+
+/**
+ * Read saved volume from storage, notify the enforcer, and apply directly.
+ */
+async function applySavedVolume(): Promise<void> {
   try {
     const domain = extractDomain(window.location.href);
     const normalizedDomain = normalizeDomain(domain);
     const volume = await getVolumeForDomain(normalizedDomain);
 
-    const elements = findMediaElements();
-    elements.forEach(element => applyVolume(element, volume));
+    // Tell the main-world enforcer what volume to enforce
+    notifyEnforcer(volume);
+
+    // Also apply directly from isolated world (original setter)
+    findMediaElements().forEach(el => applyVolume(el, volume));
   } catch (error) {
-    console.error('Error applying volume:', error);
+    console.error('[DVC] Error applying volume:', error);
   }
 }
 
@@ -51,16 +61,9 @@ function observeNewElements(): void {
     let hasNewMedia = false;
 
     for (const mutation of mutations) {
-      const nodesArray = Array.from(mutation.addedNodes);
-      for (const node of nodesArray) {
+      for (const node of Array.from(mutation.addedNodes)) {
         if (node instanceof HTMLElement) {
-          // Check if the added node is a media element
-          if (node.matches(MEDIA_SELECTORS)) {
-            hasNewMedia = true;
-            break;
-          }
-          // Check if the added node contains media elements
-          if (node.querySelector(MEDIA_SELECTORS)) {
+          if (node.matches?.(MEDIA_SELECTORS) || node.querySelector?.(MEDIA_SELECTORS)) {
             hasNewMedia = true;
             break;
           }
@@ -70,7 +73,7 @@ function observeNewElements(): void {
     }
 
     if (hasNewMedia) {
-      applyVolumeToAll();
+      applySavedVolume();
     }
   });
 
@@ -78,17 +81,19 @@ function observeNewElements(): void {
 }
 
 /**
- * Listen for volume change messages
+ * Listen for volume change messages from the popup
  */
 function setupMessageListener(): void {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.type === 'APPLY_VOLUME') {
-      applyVolumeToAll().then(() => {
+      applySavedVolume().then(() => {
         sendResponse({ success: true });
+      }).catch(() => {
+        sendResponse({ success: false });
       });
       return true; // Keep channel open for async response
     }
-    return false; // Don't keep channel open for other message types
+    return false;
   });
 }
 
@@ -96,19 +101,30 @@ function setupMessageListener(): void {
  * Initialize content script
  */
 function init(): void {
-  // Apply volume to existing elements
-  applyVolumeToAll();
+  // Read volume from storage and notify enforcer as soon as possible
+  applySavedVolume();
 
-  // Watch for new elements
-  observeNewElements();
-
-  // Listen for messages
+  // Listen for messages from popup
   setupMessageListener();
+
+  // When body is available, start observing for new media elements
+  if (document.body) {
+    observeNewElements();
+  } else {
+    // At document_start, body may not exist yet
+    const bodyObserver = new MutationObserver(() => {
+      if (document.body) {
+        bodyObserver.disconnect();
+        observeNewElements();
+        applySavedVolume();
+      }
+    });
+    bodyObserver.observe(document.documentElement, { childList: true });
+  }
+
+  // Reapply when page fully loads (catches late-loading media)
+  window.addEventListener('load', () => applySavedVolume());
 }
 
-// Run when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+// Run immediately at document_start — don't wait for DOMContentLoaded
+init();

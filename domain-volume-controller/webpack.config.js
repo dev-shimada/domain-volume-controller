@@ -4,6 +4,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 module.exports = {
   entry: {
     'background/service-worker': './src/background/service-worker.ts',
+    'content/volume-enforcer': './src/content/volume-enforcer.ts',
     'content/content-script': './src/content/content-script.ts',
     'popup/popup': './src/popup/popup.ts',
   },
