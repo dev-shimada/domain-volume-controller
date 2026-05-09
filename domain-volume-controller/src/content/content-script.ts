@@ -43,11 +43,8 @@ async function applySavedVolume(): Promise<void> {
     const normalizedDomain = normalizeDomain(domain);
     const volume = await getVolumeForDomain(normalizedDomain);
 
-    // Tell the main-world enforcer what volume to enforce
+    // Tell the main-world enforcer what scale factor to apply
     notifyEnforcer(volume);
-
-    // Also apply directly from isolated world (original setter)
-    findMediaElements().forEach(el => applyVolume(el, volume));
   } catch (error) {
     console.error('[DVC] Error applying volume:', error);
   }
