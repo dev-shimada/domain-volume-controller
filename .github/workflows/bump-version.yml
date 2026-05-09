@@ -1,0 +1,46 @@
+name: Bump Version on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version number
+        id: version
+        run: echo "number=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Update manifest.json
+        run: |
+          jq --arg v "${{ steps.version.outputs.number }}" '.version = $v' \
+            domain-volume-controller/manifest.json > /tmp/manifest.json
+          mv /tmp/manifest.json domain-volume-controller/manifest.json
+
+      - name: Update package.json
+        run: |
+          jq --arg v "${{ steps.version.outputs.number }}" '.version = $v' \
+            domain-volume-controller/package.json > /tmp/package.json
+          mv /tmp/package.json domain-volume-controller/package.json
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bump-version/${{ github.ref_name }}
+          base: main
+          commit-message: "chore: bump version to ${{ github.ref_name }}"
+          title: "chore: bump version to ${{ github.ref_name }}"
+          body: |
+            Automated version bump triggered by tag `${{ github.ref_name }}`.
+
+            - `manifest.json`: version → `${{ steps.version.outputs.number }}`
+            - `package.json`: version → `${{ steps.version.outputs.number }}`
