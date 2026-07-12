@@ -42,33 +42,28 @@ function notifyEnforcer(volumePercent: number): void {
  * follows the site the user is visiting; the background service worker is
  * asked because window.top is not accessible cross-origin.
  */
-let cachedDomain: Promise<string> | null = null;
-
-function resolveDomain(): Promise<string> {
-  if (!cachedDomain) {
-    cachedDomain = (async () => {
-      if (window.self !== window.top) {
-        try {
-          const response = await chrome.runtime.sendMessage({
-            type: MessageType.GET_TAB_DOMAIN,
-          });
-          if (response?.success && response.domain) {
-            return response.domain as string;
-          }
-        } catch {
-          // Service worker unavailable; fall back to the frame's own domain
-        }
+export async function resolveDomain(
+  inIframe: boolean = window.self !== window.top
+): Promise<string> {
+  if (inIframe) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.GET_TAB_DOMAIN,
+      });
+      if (response?.success && response.domain) {
+        return response.domain as string;
       }
-      return extractDomain(window.location.href);
-    })();
+    } catch {
+      // Service worker unavailable; fall back to the frame's own domain
+    }
   }
-  return cachedDomain;
+  return extractDomain(window.location.href);
 }
 
 /**
  * Read saved volume from storage, notify the enforcer, and apply directly.
  */
-async function applySavedVolume(): Promise<void> {
+export async function applySavedVolume(): Promise<void> {
   try {
     const domain = await resolveDomain();
     const normalizedDomain = normalizeDomain(domain);

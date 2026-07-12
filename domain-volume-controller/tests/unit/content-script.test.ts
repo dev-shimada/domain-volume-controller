@@ -2,7 +2,13 @@
  * Unit tests for content script
  */
 
-import { applyVolume, findMediaElements } from '../../src/content/content-script';
+import {
+  applyVolume,
+  findMediaElements,
+  resolveDomain,
+  applySavedVolume,
+} from '../../src/content/content-script';
+import chromeMock from '../mocks/chrome';
 
 describe('content script', () => {
   describe('applyVolume', () => {
@@ -149,6 +155,80 @@ describe('content script', () => {
 
       expect(elements).toHaveLength(1);
       expect(elements[0]).toBe(audio1);
+    });
+  });
+
+  describe('resolveDomain', () => {
+    // jsdom's default URL is http://localhost/, so the frame's own domain
+    // resolves to 'localhost'
+
+    it('should use the frame domain in the top frame', async () => {
+      chromeMock.runtime.sendMessage.mockClear();
+
+      const domain = await resolveDomain(false);
+
+      expect(domain).toBe('localhost');
+      expect(chromeMock.runtime.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should ask the service worker for the tab domain inside iframes', async () => {
+      chromeMock.runtime.sendMessage.mockResolvedValueOnce({
+        success: true,
+        domain: 'example.com',
+      });
+
+      const domain = await resolveDomain(true);
+
+      expect(domain).toBe('example.com');
+      expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'GET_TAB_DOMAIN',
+      });
+    });
+
+    it('should fall back to the frame domain when the response has no domain', async () => {
+      chromeMock.runtime.sendMessage.mockResolvedValueOnce({ success: false });
+
+      const domain = await resolveDomain(true);
+
+      expect(domain).toBe('localhost');
+    });
+
+    it('should fall back to the frame domain when the service worker is unavailable', async () => {
+      chromeMock.runtime.sendMessage.mockRejectedValueOnce(
+        new Error('Could not establish connection')
+      );
+
+      const domain = await resolveDomain(true);
+
+      expect(domain).toBe('localhost');
+    });
+  });
+
+  describe('applySavedVolume', () => {
+    it('should look up the saved volume by the resolved domain and notify the enforcer', async () => {
+      chromeMock.storage.local.get.mockResolvedValueOnce({
+        domainVolumes: { localhost: 40 },
+      });
+      const listener = jest.fn();
+      window.addEventListener('__dvc_set_volume', listener);
+
+      await applySavedVolume();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      const event = listener.mock.calls[0][0] as CustomEvent;
+      expect(event.detail.volume).toBe(40);
+      window.removeEventListener('__dvc_set_volume', listener);
+    });
+
+    it('should notify the default volume when no setting is saved', async () => {
+      const listener = jest.fn();
+      window.addEventListener('__dvc_set_volume', listener);
+
+      await applySavedVolume();
+
+      const event = listener.mock.calls[0][0] as CustomEvent;
+      expect(event.detail.volume).toBe(100);
+      window.removeEventListener('__dvc_set_volume', listener);
     });
   });
 });
