@@ -1,11 +1,9 @@
 name: Build and Release Chrome Extension
 
 on:
-  pull_request:
-    types:
-      - closed
-    branches:
-      - main
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -15,10 +13,6 @@ on:
 
 jobs:
   build:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-       startsWith(github.event.pull_request.head.ref, 'bump-version/'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,10 +43,9 @@ jobs:
       - name: Set version name
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # Extract version from branch name: bump-version/v1.2.3 -> v1.2.3
-            branch="${{ github.event.pull_request.head.ref }}"
-            echo "name=${branch#bump-version/}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Tag push: use the tag name (e.g. v1.2.3)
+            echo "name=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
           else
             echo "name=${{ github.event.inputs.version || 'manual-build' }}" >> $GITHUB_OUTPUT
           fi
@@ -71,6 +64,7 @@ jobs:
           path: domain-volume-controller/domain-volume-controller-${{ steps.version.outputs.name }}.zip
 
       - name: Create Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.name }}
