@@ -3,3 +3,5 @@
 files:
   - path: domain-volume-controller/package.json
     pattern: '"version": "{version}"'
+  - path: domain-volume-controller/manifest.json
+    pattern: '"version": "{version}"'
