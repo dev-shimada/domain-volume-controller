@@ -28,6 +28,7 @@ export enum MessageType {
   GET_VOLUME = 'GET_VOLUME',
   SET_VOLUME = 'SET_VOLUME',
   APPLY_VOLUME = 'APPLY_VOLUME',
+  GET_TAB_DOMAIN = 'GET_TAB_DOMAIN',
 }
 
 /**
@@ -45,6 +46,7 @@ export interface Message {
 export interface MessageResponse {
   success: boolean;
   volume?: number;
+  domain?: string;
   error?: string;
 }
 

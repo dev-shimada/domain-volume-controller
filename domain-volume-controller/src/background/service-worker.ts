@@ -35,6 +35,9 @@ async function handleMessage(message: Message, sender: chrome.runtime.MessageSen
     case MessageType.SET_VOLUME:
       return await handleSetVolume(message, sender);
 
+    case MessageType.GET_TAB_DOMAIN:
+      return handleGetTabDomain(sender);
+
     default:
       return { success: false, error: 'Unknown message type' };
   }
@@ -82,6 +85,20 @@ async function handleSetVolume(message: Message, sender: chrome.runtime.MessageS
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }
+}
+
+/**
+ * Handle GET_TAB_DOMAIN message.
+ * Returns the domain of the top-level page of the sender's tab, so content
+ * scripts inside cross-origin iframes can resolve the volume of the site the
+ * user is actually visiting.
+ */
+function handleGetTabDomain(sender: chrome.runtime.MessageSender): MessageResponse {
+  const url = sender.tab?.url;
+  if (!url) {
+    return { success: false, error: 'No tab URL available' };
+  }
+  return { success: true, domain: extractDomain(url) };
 }
 
 /**
