@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Domain Volume Controller",
-  "version": "1.0.3",
+  "version": "1.1.1",
   "description": "Control audio/video volume per domain",
   "permissions": [
     "storage",
@@ -24,7 +24,9 @@
         "content/volume-enforcer.js"
       ],
       "run_at": "document_start",
-      "world": "MAIN"
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true
     },
     {
       "matches": [
@@ -33,7 +35,9 @@
       "js": [
         "content/content-script.js"
       ],
-      "run_at": "document_start"
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "action": {

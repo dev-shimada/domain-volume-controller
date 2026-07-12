@@ -6,6 +6,7 @@
 
 import { extractDomain, normalizeDomain } from '../utils/domain';
 import { getVolumeForDomain } from '../shared/storage';
+import { MessageType } from '../shared/types';
 import { MEDIA_SELECTORS, OBSERVER_CONFIG, VOLUME_MIN, VOLUME_MAX } from '../shared/constants';
 
 /**
@@ -35,11 +36,36 @@ function notifyEnforcer(volumePercent: number): void {
 }
 
 /**
+ * Resolve the domain whose volume setting applies to this frame.
+ * In the top frame this is simply the page's own domain. Inside iframes
+ * (embedded players, etc.) the top-level tab's domain is used, so the volume
+ * follows the site the user is visiting; the background service worker is
+ * asked because window.top is not accessible cross-origin.
+ */
+export async function resolveDomain(
+  inIframe: boolean = window.self !== window.top
+): Promise<string> {
+  if (inIframe) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MessageType.GET_TAB_DOMAIN,
+      });
+      if (response?.success && response.domain) {
+        return response.domain as string;
+      }
+    } catch {
+      // Service worker unavailable; fall back to the frame's own domain
+    }
+  }
+  return extractDomain(window.location.href);
+}
+
+/**
  * Read saved volume from storage, notify the enforcer, and apply directly.
  */
-async function applySavedVolume(): Promise<void> {
+export async function applySavedVolume(): Promise<void> {
   try {
-    const domain = extractDomain(window.location.href);
+    const domain = await resolveDomain();
     const normalizedDomain = normalizeDomain(domain);
     const volume = await getVolumeForDomain(normalizedDomain);
 

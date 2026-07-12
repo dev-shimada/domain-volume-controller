@@ -7,6 +7,8 @@ Chrome extension to control audio/video volume per domain.
 - 🎚️ Set different volume levels for each website domain
 - 🔄 Automatically applies saved volume when visiting a domain
 - 🎯 Works with dynamically loaded media elements (YouTube, etc.)
+- 🧩 Covers embedded players in iframes, media inside shadow DOM, detached elements (`new Audio()`), and Web Audio API output
+- 🎛️ Scales volume as a factor, so page-side volume controls (YouTube, Twitch, etc.) keep working
 - 💾 Volume settings persist across browser sessions
 
 ## Installation
@@ -170,10 +172,11 @@ domain-volume-controller/
 
 ## How It Works
 
-1. **Content Script**: Runs on every page, finds all `<audio>` and `<video>` elements, and applies the saved volume
-2. **Service Worker**: Handles communication between popup and content script, manages storage
-3. **Popup**: Provides UI to adjust volume for the current domain
-4. **MutationObserver**: Watches for new media elements added to the page dynamically
+1. **Volume Enforcer (MAIN world)**: Runs at `document_start` in every frame and scales audio output by the saved factor. It hooks `HTMLMediaElement.prototype.volume`/`play()` (so it also reaches shadow DOM and detached elements like `new Audio()`), and interposes a `GainNode` in front of every `AudioContext.destination` connection for Web Audio output. Because it scales rather than overwrites, page-side volume controls keep working
+2. **Content Script (isolated world)**: Reads the saved volume for the domain and passes the scale factor to the enforcer. Inside iframes it asks the service worker for the top-level tab's domain, so embedded players follow the setting of the site you are visiting
+3. **Service Worker**: Handles communication between popup and content scripts, manages storage
+4. **Popup**: Provides UI to adjust volume for the current domain
+5. **MutationObserver**: Watches for new media elements added to the page dynamically
 
 ## Browser Compatibility
 
