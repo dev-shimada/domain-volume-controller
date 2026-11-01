@@ -17,7 +17,7 @@ export async function getVolumeForDomain(domain: string): Promise<number> {
 
   try {
     const result = await chrome.storage.local.get(STORAGE_KEY);
-    const volumes: VolumeSettings = result[STORAGE_KEY] || {};
+    const volumes = (result[STORAGE_KEY] as VolumeSettings | undefined) ?? {};
     return volumes[domain] ?? VOLUME_DEFAULT;
   } catch (error) {
     console.error('Error getting volume for domain:', error);
@@ -37,7 +37,7 @@ export async function setVolumeForDomain(domain: string, volume: number): Promis
 
     // Get existing volumes
     const result = await chrome.storage.local.get(STORAGE_KEY);
-    const volumes: VolumeSettings = result[STORAGE_KEY] || {};
+    const volumes = (result[STORAGE_KEY] as VolumeSettings | undefined) ?? {};
 
     // Update volume for domain
     volumes[domain] = clampedVolume;
@@ -57,7 +57,7 @@ export async function setVolumeForDomain(domain: string, volume: number): Promis
 export async function getAllVolumes(): Promise<VolumeSettings> {
   try {
     const result = await chrome.storage.local.get(STORAGE_KEY);
-    return result[STORAGE_KEY] || {};
+    return (result[STORAGE_KEY] as VolumeSettings | undefined) ?? {};
   } catch (error) {
     console.error('Error getting all volumes:', error);
     return {};
