@@ -1,5 +1,4 @@
 module.exports = {
-  preset: 'ts-jest',
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/tests', '<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
@@ -33,11 +32,14 @@ module.exports = {
     },
   },
   setupFiles: ['<rootDir>/tests/mocks/chrome.ts'],
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        esModuleInterop: true,
+  transform: {
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          esModuleInterop: true,
+        },
       },
-    },
+    ],
   },
 };
