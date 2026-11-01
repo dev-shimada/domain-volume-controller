@@ -9,3 +9,7 @@ updates:
     directory: "/domain-volume-controller" # Location of package manifests
     schedule:
       interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/" # .github/workflows 配下を自動で検索します
+    schedule:
+      interval: "weekly"
