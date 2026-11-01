@@ -1,6 +1,6 @@
 {
   "name": "domain-volume-controller",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Chrome extension to control volume per domain",
   "main": "index.js",
   "scripts": {
